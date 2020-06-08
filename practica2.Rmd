@@ -1,0 +1,752 @@
+---
+title: 'Práctica 2: Limpieza y Análisis de datos'
+author: "Ángel Carrasco Núñez - Inés Caro Molina"
+date: "Semestre 2019.2"
+header-includes:
+- \usepackage{fancyhdr}
+- \usepackage[page]{totalcount}
+- \pagestyle{fancy}
+- \fancyhf{}
+- \setlength{\headheight}{14pt}
+- \fancyhead[L]{\leftmark}
+- \lfoot{Inés Caro y Ángel Carrasco}
+- \rfoot{Página \thepage~de \totalpages}
+output:
+  pdf_document:
+    toc: yes
+    number_sections: yes
+    toc_depth: 3
+  word_document:
+    toc: yes
+    toc_depth: '3'
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+    toc_depth: 3
+---
+
+\pagebreak
+# Descripción del dataset. 
+
+## Origen y descripción del dataset.
+
+El *dataset* [*Official World Happiness Report*](https://www.kaggle.com/moradnejad/world-happiness-report-2015-2020?select=raw-2005-2019.csv), donde se centrará la práctica, se ha extraído de la plataforma [*kaggle*](https://www.kaggle.com/datasets). 
+
+Los datos, provenientes del [*Official World Happiness Report*](https://www.kaggle.com/moradnejad/world-happiness-report-2015-2020?select=raw-2005-2019.csv), se han basado en una encuesta sobre el estado de la felicidad global que clasifica a 156 países según lo felices que se sienten sus ciudadanos.
+
+## ¿Por qué es importante y qué pregunta/problema pretende responder?
+\begin{center}
+\textit{¿Cuáles son los factores que contribuyen a la felicidad?}
+
+\textit{¿Cómo evoluciona la felicidad a lo largo del tiempo?}
+
+\textit{¿Qué países o regiones son más felices?}
+\end{center}
+
+A pesar de ser cuestiones con un alto grado de subjetividad y sujetas a multitud de interpretaciones, pretendemos dar una respuesta orientativa a partir de un *dataset*, mencionado anteriormente, elaborado con los datos provenientes de [*Official World Happiness Reports*](https://worldhappiness.report/ed/2020/#read). 
+
+Este informe está basado en una encuesta sobre el estado de felicidad a nivel global y va ganando reconocimiento mundial a medida que los gobiernos, las organizaciones y la sociedad civil utilizan cada vez más los indicadores de felicidad para tomar decisiones políticas. 
+
+Las puntuaciones de felicidad y otras calificaciones subjetivas que recoge este *dataset* se han calculado a partir de las respuestas dadas por los ciudadanos en la **Encuesta Mundial Gallup (GWP)**. 
+
+Los datos provienen de muestras representativas a nivel nacional para los años 2005 a 2019. El *dataset* también incluye datos económicos y sociales que pueden estar relacionados con el nivel de felicidad. 
+
+A continuación, detallamos los campos del *dataset* que pueden resultar útiles para el desarrollo de la práctica:
+
+**Campo** | **Descripción**
+------ | ---------------
+*Country.name* | Nombre del país.
+*Year* | Año en el que se recogen los datos.
+*Life.ladder* | Puntuación de felicidad o bienestar subjetivo. ^[Basada en la respuesta a la pregunta conocida como **Escalera de Cantril**. Esta pregunta pide a los encuestados que imaginen la mejor vida posible para ellos (equivalente a un 10 de puntuación) y la peor vida posible (equivalente a un 0 de puntuación). A partir de aquí, deben calificar sus propias vidas actuales en esa escala.]
+*Log.GDP.per.capita* | Logaritmo del PIB *per cápita* extraído a partir de los **Indicadores de Desarrollo Mundial (WDI)**.
+*Social.support* | Media nacional de las respuestas dadas a la pregunta binaria, si se tiene familiares o amigos con los que puede contar el encuestado en caso de necesidad.
+*Healthy.life.expectancy.at.birth* | Esperanza de vida al nacer, basada en datos de la **Organización Mundial de la Salud (OMS)**.
+*Freedom.to.make.life.choices* | Media nacional de las respuestas dadas a la pregunta binaria, si está satisfecho con la libertad que tiene el encuestado de escoger qué hacer con su vida.
+*Generosity* | Residuo de la media nacional de las respuestas dadas a la pregunta binaria, si ha donado dinero a una organización benéfica en el pasado mes, sobre el PIB *per cápita*.
+*Perceptions.of.corruption* | Media nacional de las respuestas a las preguntas binarias, si la corrupción está extendida en el Gobierno y, también, si la corrupción está extendida en las empresas.
+
+\pagebreak
+# Integración y selección de los datos de interés.
+
+Leemos el fichero de [Official World Happiness Reports](https://www.kaggle.com/moradnejad/world-happiness-report-2015-2020?select=raw-2005-2019.csv) usando "," como separador de decimales, y asignando "NA" a los valores faltantes:
+
+```{r, eval=TRUE, echo=TRUE}
+df <- read.csv("2005-2019.csv", sep = ";", na.strings = "NA", dec = ",")
+```
+
+Listamos las variables del *dataset*:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+names(df)
+```
+ 
+Seleccionamos las variables de interés para el estudio y las renombramos para facilitar la lectura:
+
+**Descripción** | **Nombre Original** | **Nombre Nuevo**
+--------------- | ------------------- | ----------------
+*País* | Country.name | Country
+*Año* | year | Year
+*Puntuación de felicidad* | Life.Ladder | Score
+*Log. de PIB per cápita* | Log.GDP.per.capita | GDP
+*Apoyo social* | Social.support | =
+*Esperanza de vida* | Healthy.life.expectancy.at.birth | Life.expectancy
+*Libertad* | Freedom.to.make.life.choices | Freedom
+*Generosidad* | Generosity | =
+*Percepción de corrupción* | Perception.of.corruption | Corruption
+
+Importamos la librería **dplyr** para manipular *dataframes*:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+library(dplyr)
+```
+
+Seleccionamos y renombramos campos:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+df <- select(df, Country = Country.name, Year = year, Score = Life.Ladder, 
+             GDP = Log.GDP.per.capita, Social.support, 
+             Life.expectancy = Healthy.life.expectancy.at.birth, 
+             Freedom = Freedom.to.make.life.choices,
+             Corruption = Perceptions.of.corruption, Generosity)
+```
+
+A continuación, añadimos al *dataset* un campo correspondiente al continente al que pertenece cada país. Para esta clasificación, tomamos como referencia, los datos de *countryRegions* incluidos en el paquete *rworldmap* de R. Este nuevo campo se nombrará como **Region**. 
+
+Importamos la librería **rworlmap** para mapear a nivel de país:
+```{r, eval=TRUE, echo=TRUE, message=FALSE, warning=FALSE}
+library(rworldmap)
+```
+
+Creamos el campo de región cruzando los datos:
+```{r, eval=TRUE, echo=TRUE, message=FALSE, warning=FALSE}
+pais_region <- rworldmap::countryRegions
+df$Region <- pais_region$REGION[match(df$Country, pais_region$ADMIN)]
+```
+
+Hay que tener en cuenta que si no se encuentra el país en el fichero de referencia o bien está escrito de otro modo, obtendremos valores NA^[Valores faltantes.] en el campo *Region*. La gestión de dichos valores  se realiza más adelante, en el apartado 3.1.
+
+A continuación, inspeccionamos la estructura de las variables finales del *dataset*.
+```{r, eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+str(df)
+```
+
+Vemos que el *dataset* está formado por 10 variables y 1.848 registros correspondientes a la información de diferentes países durante los años 2005 a 2019. De estas 10 variables, 7 de ellas son numéricas continuas (*Score*, *Social.support*, *Life.expectancy*, *Freedom*, *Corruption*, *Generosity*), 2 de ellas son categóricas nominales (*Region* y *Country*) y la variable *Year* es numérica discreta. 
+
+\pagebreak
+# Limpieza de los datos.
+
+## Identificación y tratamiento de valores faltantes.
+
+Identificamos los datos con valores faltantes (NA):
+```{r, eval=TRUE, echo=TRUE}
+colSums(is.na(df))
+```
+
+Identificamos los datos que contienen ceros:
+```{r, eval=TRUE, echo=TRUE}
+colSums(df==0)
+```
+
+Se han obtenido **valores faltantes (NA)** en las variables correspondientes al *PIB*, el *apoyo social*, la *esperanza de vida*, la *libertad*, la *percepción de la corrupción* y la *generosidad*. 
+
+La cantidad de valores desconocidos es demasiado alta para omitir los registros correspondientes, ya que perderíamos mucha información. 
+Por lo tanto, procedemos a asignar los valores mediante un método basado en la similitud o diferencia entre los registros, llamado *K vecinos más próximos (KNN)*.
+
+
+Importamos la librería **VIM** para asignar y manipular valores faltantes:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+library(VIM)
+```
+
+Asignamos los valores faltantes (NA) mediante la función **kNN()**:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+df$GDP <- kNN(df)$GDP
+df$Social.support <- kNN(df)$Social.support
+df$Life.expectancy <- kNN(df)$Life.expectancy
+df$Freedom <- kNN(df)$Freedom
+df$Corruption <- kNN(df)$Corruption
+df$Generosity <- kNN(df)$Generosity
+```
+
+Comprobamos si continua habiendo valores faltantes (NA):
+```{r, eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+colSums(is.na(df))
+```
+
+Por otro lado, también se han obtenido **valores faltantes** en el campo correspondiente al continente (*Región*), tal y como se había previsto en el apartado anterior. En este caso, asignaremos manualmente el continente  que corresponda.
+
+Mostramos a qué países, les corresponden los valores faltantes (NA):
+```{r, eval=TRUE, echo=TRUE}
+unique(df[is.na(df$Region), "Country"])
+```
+
+Cruzamos los datos entre países y regiones:
+```{r, eval=TRUE, echo=TRUE}
+df$Region <- pais_region$REGION[match(df$Country, pais_region$ADMIN)]
+```
+
+Asignamos a los países que carecían de regiones, sus correspondientes: 
+```{r, eval=TRUE, echo=TRUE}
+df$Region[df$Country %in% c("Somaliland region", "Congo (Brazzaville)",
+                            "Congo (Kinshasa)", "Tanzania")] <- "Africa"
+df$Region[df$Country %in% c("Hong Kong S.A.R. of China", 
+                            "Taiwan Province of China")] <- "Asia"
+df$Region[df$Country %in% c("North Cyprus", "Palestinian Territories", 
+                            "Serbia")] <- "Europe"
+df$Region[df$Country=="United States"] <- "North America"
+```
+
+## Identificación y tratamiento de valores extremos.
+
+Para analizar los valores extremos, realizamos la gráfica de los datos de cada variable cuantitativa mediante un diagrama de caja o *boxplot*, tal como mostramos a continuación:
+
+Importamos la librería **ggplot2** y **gridExtra** para manejar gráficos:
+```{r, eval=TRUE, echo=TRUE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(gridExtra)
+```
+
+\pagebreak
+Realizamos un diagrama de caja de la variable *Score* por año:
+```{r, eval=TRUE, echo=TRUE, message=FALSE, warning=FALSE}
+df$Year <- as.factor(df$Year)
+ggplot(df, aes(x=Score, y=Year)) + geom_boxplot()
+```
+
+
+\pagebreak
+Realizamos un diagrama de caja de la variable *Score* por continente:
+```{r, eval=TRUE, echo=TRUE, message=FALSE, warning=FALSE}
+df$Region <- as.factor(df$Region)
+ggplot(df, aes(x=Score, y=Region)) + geom_boxplot()
+```
+
+\pagebreak
+Realizamos un diagrama de caja del resto de variables para el año 2019:
+```{r, eval=TRUE, echo=TRUE, message=FALSE, warning=FALSE}
+b1 <- ggplot(data = df[df$Year=="2019",], aes(y = GDP)) + geom_boxplot()
+b1 <- ggplot(data = df[df$Year=="2019",], aes(y = GDP)) + geom_boxplot()
+b2 <- ggplot(data = df[df$Year=="2019",], aes(y = Social.support)) + geom_boxplot()
+b3 <- ggplot(data = df[df$Year=="2019",], aes(y = Life.expectancy)) + geom_boxplot()
+b4 <- ggplot(data = df[df$Year=="2019",], aes(y = Freedom)) + geom_boxplot()
+b5 <- ggplot(data = df[df$Year=="2019",], aes(y = Corruption)) + geom_boxplot()
+b6 <- ggplot(data = df[df$Year=="2019",], aes(y = Generosity)) + geom_boxplot()
+```
+
+Agrupamos los diagramas de caja del resto de variables:
+```{r, eval=TRUE, echo=TRUE, message=FALSE, warning=FALSE}
+grid.arrange(b1, b2, b3, b4, b5, b6, ncol=3)
+```
+
+Vemos que existen *outliers* en las variables *Social.support*, *Freedom*, *Corruption* y *Generosity* para el año 2019. Mantendremos dichos valores, ya que, a pesar de ser extremos, son posibles al estar basados en las respuestas subjetivas de la población. Sucede los mismo con la variable *Score* para el año 2019 y para los continentes de América del Sur, Asia, Oceanía y África. 
+
+\pagebreak
+# Análisis de los datos.
+Los análisis que vamos a realizar son los siguientes:
+
+- Análisis 1º: Asociación entre variables. Queremos estudiar la relación que existe entre la variable *Score* y el resto de variables (*GDP*, *Social.support*, *Life.expectancy*, *Freedom*, *Corruption* y *Generosity*) para ver qué factores influyen en la felicidad y el modo y la medida en que lo hacen. Para este análisis, usaremos los datos disponibles más actuales^[Año 2019.]. Las pruebas que aplicaremos en este caso, se basarán en el cálculo de **correlaciones** entre cada par de variables.
+
+- Análisis 2º: Predicción de la felicidad. Una vez analizada la correlación entre variables, queremos generar un **modelo de regresión lineal** que sea capaz de predecir la puntuación de felicidad (*Score*) a partir de las variables explicativas.
+
+- Análisis 3º: Evolución de la felicidad. Queremos comparar la variable *Score* entre los años 2014 y 2019, para estudiar la evolución de la felicidad y responder a la pregunta: ¿Somos más o menos felices? Para este análisis, usaremos los datos de felicidad de los años 2014 y 2019. En este caso, aplicaremos un **contraste de hipótesis** para medias poblacionales con muestras pareadas, que nos permitirá descifrar si la media de felicidad en 2014 es igual o no a la de 2019 de un modo significativo.
+
+- Análisis 4º: Comparación entre regiones. Queremos comparar la variable *Score* entre diferentes continentes. Concretamente queremos analizar, si el continente europeo es significativamente más feliz que el continente africano. Para este análisis, usaremos los datos disponibles más actuales^[Año 2019.]. En este caso, también aplicamos un **contraste de hipótesis** pero, esta vez, con muestras independientes, ya que las observaciones de cada muestra corresponden a casos (países) distintos.
+
+
+A continuación, mostramos una tabla con el resumen de los análisis:
+
+**Análisis** | **Tipo** | **Prueba estadística**
+---- | ------------ | ----------------------
+1º | Asociación de variables | Correlaciones
+2º | Predicción de la felicidad | Modelo de regresión lineal
+3º | Evolución de la felicidad | Contraste de medias (muestras pareadas)
+4º | Comparación entre regiones | Contraste de medias (muestras independientes)
+
+## Selección de los grupos de datos que se quieren analizar/comparar.
+
+Para llevar a cabo los análisis, crearemos grupos de datos divididos por año y por región. 
+
+Para analizar la evolución de la felicidad debemos disponer de los mismos países para los años que comparamos.  
+
+Creamos los grupos de datos por año:
+```{r, eval=TRUE, echo=TRUE}
+table(df$Year)
+df.2005 <- df[df$Year=="2005",]
+df.2006 <- df[df$Year=="2006",]
+df.2007 <- df[df$Year=="2007",]
+df.2008 <- df[df$Year=="2008",]
+df.2009 <- df[df$Year=="2009",]
+df.2010 <- df[df$Year=="2010",]
+df.2011 <- df[df$Year=="2011",]
+df.2012 <- df[df$Year=="2012",]
+df.2013 <- df[df$Year=="2013",]
+df.2014 <- df[df$Year=="2014",]
+df.2015 <- df[df$Year=="2015",]
+df.2015 <- df[df$Year=="2015",]
+df.2016 <- df[df$Year=="2016",]
+df.2017 <- df[df$Year=="2017",]
+df.2018 <- df[df$Year=="2018",]
+df.2019 <- df[df$Year=="2019",]
+```
+
+Hallamos los países existentes tanto en 2014 como en 2019:
+```{r, eval=TRUE, echo=TRUE}
+common.countries <- intersect(df.2014$Country,df.2019$Country)
+```
+
+Creamos los grupos de datos por año dentro de los países existentes, a la vez, en los años 2014 y 2019:
+```{r, eval=TRUE, echo=TRUE}
+df.comp <- df[(df$Year %in% c("2014","2019") & df$Country %in% common.countries),]
+df.comp.2014 <- df.comp[df.comp$Year=="2014",]
+df.comp.2019 <- df.comp[df.comp$Year=="2019",]
+```
+
+
+Observamos los valores por año:
+```{r, eval=TRUE, echo=TRUE}
+table(df.2019$Region)
+```
+
+Creamos los grupos de datos por continentes en 2019:
+```{r, eval=TRUE, echo=TRUE}
+df.cont <- df.2019[df.2019$Region %in% c("Europe","Africa"),]
+df.AF <- df.2019[df.2019$Region=="Africa",]
+df.AS <- df.2019[df.2019$Region=="Asia",]
+df.OC <- df.2019[df.2019$Region=="Australia",]
+df.EU <- df.2019[df.2019$Region=="Europe",]
+df.NA <- df.2019[df.2019$Region=="North America",]
+df.SA <- df.2019[df.2019$Region=="South America",]
+```
+
+## Comprobación de la normalidad y homogeneidad de la varianza.
+
+### Normalidad.
+
+Considerando los análisis que vamos a realizar, debemos comprobar la normalidad de las siguientes variables cuantitativas:
+
+- *GDP*, *Social.support*, *Life.expectancy*, *Freedom*, *Corruption*, *Generosity* para el año 2019.
+- *Score* para los años 2014 y 2019.
+- *Score* para los continentes de África y Europa en el año 2019.
+
+Para comprobar que las variables cuantitativas de nuestro *dataset* siguen una **distribución normal**, representaremos los histogramas y realizaremos tests de normalidad mediante el paquete de R, *nortest*. 
+
+Para las muestras por regiones usaremos el test de *Shapiro-Wilk* (ya que el tamaño de la muestra es menor a 50) y para el resto usaremos el test de *Lilliefors*, que es una modificación del test *Kolmogorov-Smirnov*. 
+
+\pagebreak
+A continuación, desarrollamos los **Histogramas**:
+
+Importamos la librería **psych** para los procedimientos para la investigación psicológica, psicométrica y de la personalidad:
+
+```{r, eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+library(psych)
+```
+
+Importamos la librería **ggpubr** para manejar gráficos:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+library(ggpubr)
+```
+
+Generamos el histograma de las variables en 2019:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+multi.hist(x = select_if(df.2019,is.numeric), dcol = c("blue", "red"), 
+           dlty = c("dotted", "solid"))
+```
+
+\pagebreak
+Generamos los histogramas para el año 2014 y 2019:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+ggplot(df.comp, aes(x=Score, color=Year, fill=Year)) + 
+  geom_histogram(alpha=0.6) + theme(legend.position="none") + facet_wrap(~Year)
+```
+
+\pagebreak
+Generamos los histogramas para África y Europa en 2019:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+ggplot(df.cont, aes(x=Score, color=Region, fill=Region)) + 
+  geom_histogram(alpha=0.6) + theme(legend.position="none") + facet_wrap(~Region)
+```
+
+A partir de los histogramas, obtenemos una representación visual de la distribución de los datos. Para asegurarnos que siguen una distribución normal, aplicamos los tests de normalidad. 
+El test se basa en el siguiente contraste de hipótesis (fijando un nivel de confianza del 95%, $\alpha=0,05$):
+
+* $H_0:$ La muestra proviene de una distribución normal.
+* $H_1:$ La muestra no proviene de una distribución normal.
+
+
+
+
+A continuación, desarrollamos los **test de normalidad**:
+
+Importamos librería **nortest** para realizar los test de normalidad:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+library(nortest)
+```
+
+Realizamos el test de normalidad por años:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+norm_by_year <- matrix(c(lillie.test(df.comp.2014$Score)$p.value, 
+                         lillie.test(df.comp.2019$Score)$p.value), ncol=1, byrow=TRUE)
+colnames(norm_by_year) <- c("P-Value")
+rownames(norm_by_year) <- c(2014, 2019)
+norm_by_year <- as.table(norm_by_year)
+norm_by_year
+```
+
+El resultado del test nos indica que la variable *Score* en los años 2014 y 2019 sigue una distribución normal (P-Valor>0,05).
+
+Realizamos los test de normalidad por regiones mediante el test *Shapiro*:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+norm_by_region <- matrix(c(shapiro.test(df.EU$Score)$p.value, 
+                           shapiro.test(df.AF$Score)$p.value), ncol=1)
+colnames(norm_by_region) <- c("P-Value")
+rownames(norm_by_region) <- c("Europe", "Africa")
+norm_by_region <- as.table(norm_by_region)
+norm_by_region
+```
+
+Para la variable *Score* agrupada por los continentes de Europa y África, obtenemos P-valores>0,05, por lo que podemos asumir normalidad.
+
+Realizamos el test de normalidad para el año 2019:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+norm_by_2019 <- matrix(c(lillie.test(df.2019$GDP)$p.value,
+                         lillie.test(df.2019$Social.support)$p.value,
+                         lillie.test(df.2019$Life.expectancy)$p.value, 
+                         lillie.test(df.2019$Freedom)$p.value,
+                         lillie.test(df.2019$Corruption)$p.value, 
+                         lillie.test(df.2019$Generosity)$p.value), ncol=1, byrow=TRUE)
+colnames(norm_by_2019) <- c("P-Value")
+rownames(norm_by_2019) <- c("GDP", "Social Support", "Life Expectancy", "Freedom", 
+                            "Corruption", "Generosity")
+norm_by_2019 <- as.table(norm_by_2019)
+norm_by_2019
+```
+
+Las variables *GDP*, *Social.support*, *Life.expectancy*, *Freedom*, *Corruption* y *Generosity* para el año 2019 no siguen una distribución normal (P valor<0.05).
+
+
+### Homocedasticidad
+
+Considerando los análisis que vamos a realizar, debemos comprobar la homogeneidad de la varianza entre los siguientes grupos de datos:
+
+- *Score* para los años 2014 y 2019.
+- *Score* para los continentes África y Europa en el año 2019.
+
+Para comprobar la **homogeneidad de la varianza** (homocedasticidad) entre diferentes grupos, se debe tener en cuenta si las muestras cumplen con la condición de normalidad o no. En nuestro caso siguen una distribución normal por lo que realizaremos el test de *Bartlett* en ambos casos.
+
+Para realizar este test, se realiza el siguiente contraste de hipótesis (fijando un nivel de confianza del 95%, $\alpha=0,05$):
+
+* $H_0:$ La varianza es igual entre los grupos.
+* $H_1:$ La varianza no es igual entre los grupos.
+
+
+Realizamos el Test de *Barlett* por año:
+```{r, eval=TRUE, echo=TRUE}
+bartlett.test(Score ~ Year, data=df.comp)
+```
+
+Realizamos el Test de *Bartlett* por continente:
+```{r, eval=TRUE, echo=TRUE}
+bartlett.test(Score ~ Region, data=df.cont)
+```
+
+Tanto para los grupos creados en función del año como para los grupos creados en función del continente, obtenemos un P-valor>0,05, por lo que, podemos asumir igualdad de varianzas entre los años 2014 y 2019, y entre el continente de África y de Europa.
+
+## Aplicación de pruebas estadísticas para comparar los grupos de datos.
+
+### Análisis 1. Asociación de variables. 
+Queremos responder a la siguiente pregunta: **¿Qué factores contribuyen a la felicidad?**
+
+Para responder a esta pregunta usaremos los datos más actuales disponibles^[Año 2019.]. Comparamos cada par de variables cuantitativas mediante un diagrama de dispersión múltiple (*pairwise scatterplot*), para observar, si existe relación entre la puntuación de felicidad y el resto de variables. Posteriormente, realizaremos un test de correlación^[Usaremos el test de *Kendall* ya que las variables no siguen una distribución normal] para asegurarnos. También, se estudiará la relación entre variables para detectar una posible colinialidad. 
+
+En el diagrama de dispersión múltiple, se muestran *scatterplots* de cada par de variables en la parte izquierda de la figura, el coeficiente de correlación de *Pearson* en la parte derecha y la distribución de cada variable en la diagonal.
+
+
+Importamos librería **GGally** para manejar diagramas de dispersión:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+library(GGally)
+```
+
+Realizamos el diagrama de dispersión múltiple:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
+ggpairs(select_if(df.2019,is.numeric), lower = list(continuous = "smooth"),
+        diag = list(continuous = "bar"), axisLabels = "none")
+```
+
+Observamos que existe relación lineal positiva entre la variable *Score* y las variables *GDP*, *social.support*, *life.expectancy* y en menor medida, *freedom*. Entre la variable *Score* y *Corruption* vemos una ligera relación lineal negativa mientras que entre la variable *Score* y *Generosity* no parece haber ningún tipo de relación (la nube de puntos no sigue ningún patrón). También hay indicios de colinealidad por la relación que existe entre las variables *GDP*, *social.support* y *life.expectancy*. 
+
+A continuación aplicamos el test *kendall* por cada variable:
+```{r, eval=TRUE, echo=TRUE}
+test_kendall_1 <- cor.test(df.2019$Score,df.2019$GDP,method = "kendall")
+test_kendall_2 <- cor.test(df.2019$Score,df.2019$Social.support,method = "kendall")
+test_kendall_3 <- cor.test(df.2019$Score,df.2019$Life.expectancy,method = "kendall")
+test_kendall_4 <- cor.test(df.2019$Score,df.2019$Freedom,method = "kendall")
+test_kendall_5 <- cor.test(df.2019$Score,df.2019$Corruption,method = "kendall")
+test_kendall_6 <- cor.test(df.2019$Score,df.2019$Generosity,method = "kendall")
+```
+
+Extraemos el P-Valor y los coeficientes de correlación:
+```{r, eval=TRUE, echo=TRUE}
+correlaciones <- matrix(c(test_kendall_1$p.value, test_kendall_2$p.value, 
+                      test_kendall_3$p.value, test_kendall_4$p.value, 
+                      test_kendall_5$p.value, test_kendall_6$p.value,
+                      test_kendall_1$estimate, test_kendall_2$estimate, 
+                      test_kendall_3$estimate, test_kendall_4$estimate, 
+                      test_kendall_5$estimate, test_kendall_6$estimate), nrow=6)
+colnames(correlaciones) <- c("P Value","Coeficiente")
+rownames(correlaciones) <- c("GDP","Social.support","Life.expectancy","Freedomm",
+                             "Corruption","Generosity")
+correlaciones <- as.table(correlaciones)
+correlaciones
+```
+
+El P-Valor es menor a 0,05 en las variables *GDP*, *Life.expectancy*, *Social.support*, *Freedom* y *Corruption*, por lo que, podemos concluir que estas variables están significativamente correlacionadas con *Score*. A partir del coeficiente de correlación, vemos la fuerza y la dirección de estas relaciones. Los factores que más influyen en la felicidad son el PIB *per cápita*, el apoyo social, la esperanza de vida y la libertad. También, existe una ligera y negativa relación entre *Score* y *Corruption*.
+
+### Análisis 2. Predicción de la felicidad.
+
+Con el fin de predecir el nivel de felicidad, crearemos un modelo de regresión lineal múltiple, donde la variable dependiente es la puntuación de felicidad (*Score*) y las variables independientes o explicativas son las correspondientes a la familia, el PIB *per cápita*, la esperanza de vida, la percepción de la corrupción, la libertad y la generosidad. Usaremos los datos más actuales^[Año 2019.] para generar el modelo. A partir de las correlaciones vistas en el apartado anterior, podemos intuir las variables que se podrían incluir en el modelo, sin embargo, para empezar, generaremos un modelo con todas ellas y analizaremos el resultado.
+
+```{r, eval=TRUE, echo=TRUE}
+modelo <- lm(Score ~ GDP + Social.support + Life.expectancy + Freedom + Corruption + 
+               Generosity, data = df.2019)
+summary(modelo)
+```
+
+El P-Valor del estadístico **F** es menor a 0,05, esto indica que, al menos, una de las variables del modelo es significativa. Para ver, cuáles lo son, debemos recurrir al P-Valor de los coeficientes de regresión parciales. Vemos que las variables *GDP* y *Generosity* tienen un P-Valor mayor a 0,05, por lo que, no las consideramos significativas. Mientras que las variables *Social.support*, *Life.expectancy*, *Freedom* y *Corruption* sí serán significativas (P-Valores<0,05). En conjunto, el coeficiente de determinación ajustado $R^2=0,7171$, indica un buen ajuste siendo el modelo capaz de explicar el 71,71% de la variabilidad observada en el nivel de felicidad.
+
+Puede sorprender que no se considere la variable *GDP* significativa a la hora de explicar el modelo. El motivo puede ser la relación que guarda con las variables *life.expectancy* y *social.support*. En el apartado anterior, ya hemos vistos indicios de colinealidad. A continuación, calculamos el **VIF** para medir la colinealidad de las variables. Vemos que el **VIF** para la variable *GDP* es bastante alto, aunque, al no llegar a 5, no lo consideraremos un motivo de preocupación.
+
+Importamos la librería **faraway** para manejar la colinealidad:
+```{r, eval=TRUE, echo=TRUE, message=FALSE, warning=FALSE}
+library(faraway)
+faraway::vif(modelo)
+```
+
+Para escoger el mejor modelo, podemos emplear la estrategia de *stepwise mixto*. A partir del modelo con todas las variables como predictores,  realizamos la selección mediante la **medición Akaike (AIC)**.
+```{r, eval=TRUE, echo=TRUE}
+step(object = modelo, direction = "both", trace = 1)
+```
+
+Obtenemos que el mejor modelo es: 
+$Score=-2,071+3,392~Social.support+0,061~Life.expectancy+1,875~Freedom-0,9~Corruption$
+```{r, eval=TRUE, echo=TRUE, warning=FALSE}
+modelo_final <- lm(Score ~ Social.support + Life.expectancy + Freedom + Corruption, 
+                   data = df.2019)
+summary(modelo_final)
+```
+
+Finalmente, para validar el modelo, representamos gráficamente los residuos para comprobar la linealidad, la homocedasticidad y normalidad de residuos.
+```{r, eval=TRUE, echo=TRUE, warning=FALSE}
+par(mfrow = c(2,2))
+plot(modelo_final)
+```
+
+
+### Análisis 3. Evolución de la felicidad. 
+
+Queremos responder a la siguiente pregunta: **¿Somos más felices ahora que hace unos años?**
+
+Para responder a esta pregunta, comparamos los datos de felicidad de 2014 frente a los de 2019. Concretamente, queremos comparar la media de la puntuación de felicidad en 2014 frente a la media de la puntuación de felicidad en 2019. Se cumplen las condiciones de normalidad e igualdad de varianzas (tal y como hemos visto en el apartado anterior), aunque las muestras no son independientes. Por lo tanto, podemos aplicar un **contraste de hipótesis** sobre la diferencia de medias basado en la *t-Student* con una adaptación para muestras pareadas. Las hipótesis del test son las siguientes:
+
+* $H_0:\mu_{2014}-\mu_{2019}=0$ (las medias son iguales).
+* $H_1:\mu_{2014}-\mu_{2019}<0$ (la media de 2016 es menor a la media de 2019).
+
+Fijamos el nivel de significación en $\alpha=0,05$.
+
+Aplicamos el *t-test* para muestras relacionadas:
+```{r, eval=TRUE, echo=TRUE}
+t.test(x = df.comp.2014$Score, y = df.comp.2019$Score, alternative = "less", paired = T)
+```
+
+Observamos que el P-Valor es menor a 0,05, por lo que, la media de 2014 es significativamente menor a la de 2019. Entonces, podemos decir que ha aumentado el nivel de felicidad entre los años 2014 y 2019 a nivel global.
+
+A continuación, representamos visualmente la evolución de la felicidad entre los años 2014 y 2019.
+```{r, eval=TRUE, echo=TRUE}
+ggplot(df.comp, aes(x=Year, y=Score, fill=Region)) + geom_boxplot()+facet_wrap(~Region)+
+  theme(legend.position="none", axis.text.x = element_text(angle=90, hjust=1))
+```
+Hemos visto que ha habido una mejora significativa respecto al 2014 del nivel de felicidad a nivel global. Sin embargo, en el gráfico vemos como en algunas regiones aumenta, en otras disminuye y en otras se mantiene prácticamente constante. 
+
+### Análisis 4. Comparación entre continentes. Contraste de hipótesis. 
+
+Queremos responder a la siguiente pregunta: **¿Somos más felices en Europa que en África?**
+
+Para responder a esta pregunta, comparamos los datos de felicidad entre el continente europeo y el continente africano. Concretamente queremos comparar la media de la puntuación de felicidad en Europa frente a la media de la puntuación de felicidad en África, para los datos de 2019. Como hemos visto, se cumplen los supuestos de normalidad y homocedasticidad, así que también aplicamos un **contraste de hipótesis** (con $\alpha=0,05$), pero esta vez, con muestras independientes, ya que las observaciones de cada muestra, corresponden a casos (países) distintos. Las hipótesis del test son las siguientes:
+
+* $H_0:\mu_{AF}-\mu_{EU}=0$ (las medias son iguales).
+* $H_1:\mu_{AF}-\mu_{EU}<0$ (la media de África es menor a la media de Europa).
+
+Aplicamos el *t-test* para muestras independientes:
+```{r, eval=TRUE, echo=TRUE}
+t.test(x = df.AF$Score, y = df.EU$Score, alternative = "less")
+```
+Observamos que el P-Valor es menor a 0,05, por lo que, rechazamos la hipótesis nula y podemos decir que Europa es significativamente más feliz que África.
+
+\pagebreak
+# Representación de los resultados 
+
+En este apartado, complementamos los resultados del apartado anterior con algunas representaciones gráficas.
+
+## Análisis 1. Correlación.
+Visualización de la correlación (coeficiente de correlación *Kendall*):
+```{r, eval=TRUE, echo=TRUE, warning=FALSE}
+ggcorr(select_if(df.2019,is.numeric), method = c("everything", "kendall")) 
+```
+
+## Análisis 2. Predicción.
+Ecuación y coeficientes de regresión del modelo de regresión múltiple:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE}
+modelo_final
+```
+
+## Análisis 3. Evolución felicidad.
+*Boxplot* de felicidad entre años:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE}
+ggplot(df, aes(x=Year, y=Score, fill=Year)) + geom_boxplot() +
+  theme(legend.position="none")
+```
+
+\pagebreak
+## Análisis 4. Comparación entre regiones.
+Ordenación de los continentes por *Score*:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE}
+df.2019$Region = with(df.2019, reorder(Region, Score, median))
+```
+*Boxplot* de felicidad entre continentes:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE}
+ggplot(df.2019, aes(x=Region, y=Score, fill=Region)) + geom_boxplot() +
+  theme(legend.position="none")
+```
+
+Mapa de la felicidad mundial en el año 2019:
+
+- Añadimos los datos al mapa:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE}
+mapdf <- joinCountryData2Map(df.2019, joinCode="NAME", 
+                             nameJoinColumn="Country", verbose=TRUE)
+```
+
+- Renombramos los países que no se han vinculado anteriormente^[No se ha encontrado correspondiencia para North Cyprus.]:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE}
+df.2019$Country <- as.character(df.2019$Country)
+df.2019$Country[df.2019$Country=="Hong Kong S.A.R. of China"] <- "Hong Kong"
+df.2019$Country[df.2019$Country=="Palestinian Territories"] <- 
+  "Palestinian Territory, Occupied"
+df.2019$Country[df.2019$Country=="Taiwan Province of China"] <- 
+  "Taiwan, Province of China"
+df.comp$Country <- as.character(df.comp$Country)
+df.comp$Country[df.comp$Country=="Hong Kong S.A.R. of China"] <- "Hong Kong"
+df.comp$Country[df.comp$Country=="Palestinian Territories"] <- 
+  "Palestinian Territory, Occupied"
+df.comp$Country[df.comp$Country=="Taiwan Province of China"] <- 
+  "Taiwan, Province of China"
+
+mapdf <- joinCountryData2Map(df.2019, joinCode="NAME", 
+                             nameJoinColumn="Country", verbose=TRUE)
+```
+
+- Realizamos el mapa de felicidad:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE}
+mapCountryData(mapdf, nameColumnToPlot="Score", oceanCol = "lightblue",
+               borderCol = "black", missingCountryCol="grey")
+```
+
+Realizamos los mapas de cada variable (*GDP*, *Social.support*, *Life.expectancy*, *Freedom*, *Corruption* y *Generosity*) con los valores del año 2019:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE}
+variables <- c("GDP", "Social.support", "Life.expectancy", "Freedom", "Corruption", 
+               "Generosity")
+op <- par(mfcol=c(3,2), mai=c(0,0.2,0.3,0))
+for (i in variables) {
+  map_by_variable <- mapCountryData(mapdf, nameColumnToPlot=i, borderCol = "transparent", 
+                                    missingCountryCol="grey")
+ }
+par(op)
+```
+
+
+Mapa de la felicidad mundial entre los años 2014 y 2019:
+
+- Importamos la librería **RColorBrewer** para gestionar los colores de los mapas:
+```{r, eval=TRUE, echo=TRUE, warning=FALSE}
+library(RColorBrewer)
+```
+
+- Preparamos el próximo mapa de felicidad entre 2014 y 2019:
+```{r, eval=TRUE, echo=TRUE}
+colourPalette <- RColorBrewer::brewer.pal(7,"Greens")
+anyos <- c("2014", "2019")
+op <- par(mfcol=c(2,1),mai=c(0,0.2,0.3,0))
+for (i in anyos) {
+  mapdf_anyos <- joinCountryData2Map(df.comp[df.comp$Year==i,], joinCode="NAME", 
+                             nameJoinColumn="Country", verbose=TRUE)
+  map_by_year <- mapCountryData(mapdf_anyos, 
+                                nameColumnToPlot="Score",
+                                borderCol = "transparent", 
+                                missingCountryCol="grey",
+                                colourPalette = colourPalette,
+                                mapTitle = paste(i,"Score"),)
+ }
+par(op)
+```
+
+\pagebreak
+Mapa de la felicidad entre Europa y África:
+```{r, eval=TRUE, echo=TRUE}
+colourPalette <- RColorBrewer::brewer.pal(7,"RdPu")
+continentes <- c("Africa","Europe")
+op <- par(mfcol=c(2,2),mai=c(0,0.2,0.3,0))
+for (i in continentes) {
+  map_by_cont <- mapCountryData(mapdf, 
+               nameColumnToPlot="Score", 
+               mapTitle = paste(i,"Score"), 
+               colourPalette = colourPalette,
+               oceanCol = "lightblue", 
+               mapRegion=i,
+               borderCol = "black",
+               missingCountryCol="grey",
+               addLegend=FALSE)
+  do.call(addMapLegend, c(map_by_cont, legendWidth=0.5, legendIntervals="data", 
+                          legendMar=0))
+}
+par(op)
+```
+
+\pagebreak
+# Resolución del problema
+
+Primeramente, generamos en un fichero *csv* con los datos resultantes tras la integración, la selección de datos de interés (apartado 2) y la limpieza de los datos (apartado 3). 
+
+En términos generales, se han completado los valores faltantes mediante el **método kNN**, se ha seleccionado los campos que nos permiten realizar el análisis y se ha añadido un nuevo campo asociado al continente.
+```{r, eval=TRUE, echo=TRUE, warning=FALSE}
+write.csv(df,"practica2-dataset-final.csv", row.names = FALSE)
+```
+
+Los resultados de los análisis nos han permitido responder a las preguntas que habíamos planteado en un inicio.
+Antes de realizar el estudio, hemos seleccionado grupos de datos por año y por continente que nos han facilitado el análisis. También, hemos comprobado la normalidad y homocedasticidad de estos grupos de datos para poder determinar qué tipo de pruebas estadísticas eran las más adecuadas.
+
+**¿Cuáles son los factores que contribuyen a la felicidad?**
+
+Para responder a esta pregunta, hemos realizado un estudio de correlaciones y posteriormente, hemos generado un modelo de regresión lineal múltiple. 
+
+Gracias al estudio de las **correlaciones** y el cálculo del coeficiente de correlación de *Kendall*, hemos determinado que el aspecto económico (PIB), la cohesión social entre los ciudadanos y la esperanza de vida del país, son los factores que más contribuyen positivamente a la felicidad de las personas. De hecho, estos tres factores también guardan relación entre ellos. La libertad de tomar decisiones, también influye positivamente, aunque, en menor medida. Por contra, la percepción de la corrupción influye ligera y negativamente en la percepción de la felicidad.
+
+Por otro lado, la generación de un **modelo de regresión lineal** nos permite predecir el nivel de felicidad de un país conociendo los datos correspondientes al apoyo social, la esperanza de vida, la libertad de tomar decisiones y la percepción de la corrupción. Según la siguiente ecuación del modelo:
+
+$Score=-2,071+3,392~Social.support+0,061~Life.expectancy+1,875~Freedom-0,9~Corruption$
+
+Queremos destacar, que el estudio podría haberse complementado con la incorporación de otros indicadores como el clima del país, la desigualdad social, los derechos civiles, la igualdad de género o la existencia de servicios públicos de sanidad y de educación. 
+
+**¿Cómo evoluciona la felicidad a lo largo del tiempo?**
+
+Para responder a esta pregunta, hemos comparado la media de felicidad entre los años 2014 y 2019. Mediante un **contraste de hipótesis** hemos determinado que, a nivel global, somos más felices ahora, que hace 5 años. Sin embargo, hemos querido visualizar cómo ha evolucionado cada continente entre estos dos años, y hemos visto que Europa, África y ligeramente Asia sí que son más felices. No obstante, América del Norte, América del Sur y Oceanía eran más felices en 2014 que ahora.
+
+**¿Qué países o regiones son más felices?**
+
+En este punto nos hemos centrado concretamente en comparar los continentes de África y Europa mediante un **contraste de hipótesis**. Tras el resultado de la prueba, hemos comprobado que en el continente europeo son significativamente más felices que en el continente africano.
+
+\pagebreak
+# Contribución
+
+**Contribuciones** | **Firma**
+--------------- | ---------------
+Investigación previa | Inés Caro Molina, Ángel Carrasco Núñez
+Redacción de las respuestas  | Inés Caro Molina, Ángel Carrasco Núñez
+Desarrollo de código | Inés Caro Molina, Ángel Carrasco Núñez
